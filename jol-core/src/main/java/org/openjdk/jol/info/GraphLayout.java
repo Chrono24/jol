@@ -334,6 +334,17 @@ public class GraphLayout {
     public String toFootprint() {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
+        toFootprint(pw);
+        pw.close();
+        return sw.toString();
+    }
+
+    /**
+     * Print the stringly representation of footprint table
+     *
+     * @param pw the PrintWriter to write footprint table to
+     */
+    public void toFootprint(PrintWriter pw) {
         pw.println(description + " footprint:");
         pw.printf(" %9s %9s %9s   %s%n", "COUNT", "AVG", "SUM", "DESCRIPTION");
         for (Class<?> key : getClasses()) {
@@ -343,8 +354,6 @@ public class GraphLayout {
         }
         pw.printf(" %9d %9s %9d   %s%n", totalCount(), "", totalSize(), "(total)");
         pw.println();
-        pw.close();
-        return sw.toString();
     }
 
     /**
@@ -355,7 +364,17 @@ public class GraphLayout {
     public String toPrintable() {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
+        toPrintable(pw);
+        pw.close();
+        return sw.toString();
+    }
 
+    /**
+     * Print the stringly representation of object graph
+     *
+     * @param pw the PrintWriter to write linearized text form of object graph to
+     */
+    public void toPrintable(PrintWriter pw) {
         long last = 0L;
 
         int typeLen = "TYPE".length();
@@ -383,8 +402,6 @@ public class GraphLayout {
         pw.println();
         pw.println("Addresses are " + (addressStable ? "stable" : "still unstable") + " after " + addressTries + " tries.");
         pw.println();
-        pw.close();
-        return sw.toString();
     }
 
     /**

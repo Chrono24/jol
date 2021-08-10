@@ -241,6 +241,17 @@ public class ClassLayout {
 
     /**
      * Produce printable stringly representation of class layout.
+     * This method uses the instance originally provided to {@link #parseInstance(Object)},
+     * if that instance is still available.
+     *
+     * @param pw the PrintWriter to write human-readable layout info to
+     */
+    public void toPrintable(PrintWriter pw) {
+        toPrintable(classData.instance(), pw);
+    }
+
+    /**
+     * Produce printable stringly representation of class layout.
      * This method accepts instance to read the actual data from.
      *
      * @param instance instance to work on
@@ -249,7 +260,19 @@ public class ClassLayout {
     public String toPrintable(Object instance) {
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
+        toPrintable(instance, pw);
+        pw.close();
+        return sw.toString();
+    }
 
+    /**
+     * Produce printable stringly representation of class layout.
+     * This method accepts instance to read the actual data from.
+     *
+     * @param instance instance to work on
+     * @param pw the PrintWriter to write human-readable layout info to
+     */
+    public void toPrintable(Object instance, PrintWriter pw) {
         int maxTypeLen = "TYPE".length();
         for (FieldLayout f : fields()) {
             maxTypeLen = Math.max(f.typeClass().length(), maxTypeLen);
@@ -356,10 +379,6 @@ public class ClassLayout {
 
         pw.printf("Instance size: %d bytes%n", sizeOf);
         pw.printf("Space losses: %d bytes internal + %d bytes external = %d bytes total%n", lossesInternal, lossesExternal, lossesTotal);
-
-        pw.close();
-
-        return sw.toString();
     }
 
     static final String[] ZERO_RUNS;
