@@ -31,12 +31,23 @@ import java.util.Arrays;
  * @param <E>
  */
 public class SimpleStack<E> {
+    private static final int MINIMUM_CAPACITY = 2;
+
     Object[] elements;
     int head;
 
     public SimpleStack() {
+        this(MINIMUM_CAPACITY);
+    }
+
+    public SimpleStack(int expectedMaxSize) {
         head = -1;
-        elements = new Object[2];
+        elements = new Object[capacity(Math.max(MINIMUM_CAPACITY, expectedMaxSize))];
+    }
+
+    private static int capacity( int expectedMaxSize ) {
+        int candidate = Integer.highestOneBit(expectedMaxSize);
+        return candidate >= expectedMaxSize ? candidate : candidate<<1;
     }
 
     private void resize() {
@@ -62,4 +73,22 @@ public class SimpleStack<E> {
         return (E) e;
     }
 
+    public int length() {
+        return elements.length;
+    }
+
+    public int size() {
+        return head + 1;
+    }
+
+    public void ensureCapacity(int capacity) {
+        int target = capacity + size();
+        if (target > length()) {
+            resize(capacity(target));
+        }
+    }
+
+    private void resize(int capacity) {
+        elements = Arrays.copyOf(elements, capacity);
+    }
 }

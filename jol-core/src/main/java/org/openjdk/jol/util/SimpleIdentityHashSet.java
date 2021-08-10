@@ -35,7 +35,11 @@ public final class SimpleIdentityHashSet {
     private int size;
 
     public SimpleIdentityHashSet() {
-        table = new Object[capacity(MINIMUM_CAPACITY)];
+        this(MINIMUM_CAPACITY);
+    }
+
+    public SimpleIdentityHashSet(int expectedMaxSize) {
+        table = new Object[capacity(Math.max(MINIMUM_CAPACITY, expectedMaxSize))];
     }
 
     private static int capacity(int expectedMaxSize) {
@@ -100,5 +104,20 @@ public final class SimpleIdentityHashSet {
         }
         table = newTable;
         return true;
+    }
+
+    public int length() {
+        return table.length;
+    }
+
+    public int size() {
+        return size;
+    }
+
+    public void ensureCapacity(int capacity) {
+        int target = capacity + size();
+        if ( target*3 > length()) {
+            resize(capacity(target));
+        }
     }
 }
