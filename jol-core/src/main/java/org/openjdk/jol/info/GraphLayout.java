@@ -357,6 +357,67 @@ public class GraphLayout {
     }
 
     /**
+     * Get the stringly representation of footprint table, sorted by total size in descending order
+     *
+     * @return footprint table
+     */
+    public String toSortedFootprint() {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        toSortedFootprint(pw);
+        pw.close();
+        return sw.toString();
+    }
+
+    /**
+     * Print the stringly representation of footprint table, sorted by total size in descending order
+     *
+     * @param pw the PrintWriter to write footprint table to
+     */
+    public void toSortedFootprint(PrintWriter pw) {
+        pw.println(description + " footprint:");
+        pw.printf(" %9s %9s %9s   %s%n", "COUNT", "AVG", "SUM", "DESCRIPTION");
+        pw.printf(" %9d %9s %9d   %s%n", totalCount(), "", totalSize(), "(total)");
+
+        ClassStats[] stats = new ClassStats[getClasses().size()];
+        int i = 0;
+        for (Class<?> key : getClasses()) {
+            ClassStats cs = new ClassStats();
+            cs.key = key;
+            cs.count = getClassCounts().count(key);
+            cs.size = getClassSizes().count(key);
+            stats[i++] = cs;
+        }
+        Arrays.sort(stats, ClassStatsComparator.instance());
+
+        for (ClassStats cs : stats) {
+            long average = (cs.size > 0 && cs.count > 0) ? cs.size / cs.count : 0;
+            pw.printf(" %9d %9d %9d   %s%n", cs.count, average, cs.size, cs.key.getName());
+        }
+        pw.println();
+    }
+
+    private static final class ClassStats {
+        Class<?> key;
+        long count;
+        long size;
+    }
+
+    private static final class ClassStatsComparator implements Comparator<ClassStats> {
+
+        private static final ClassStatsComparator INSTANCE = new ClassStatsComparator();
+
+        public static Comparator<? super ClassStats> instance() {
+            return INSTANCE;
+        }
+
+        @Override
+        public int compare(ClassStats r1, ClassStats r2) {
+            return Long.compare(r2.size, r1.size);
+        }
+    }
+
+    /**
      * Get the stringly representation of object graph
      *
      * @return linearized text form of object graph
