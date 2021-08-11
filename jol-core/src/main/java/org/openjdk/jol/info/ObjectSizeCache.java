@@ -33,28 +33,28 @@ import java.util.Map;
 
 public interface ObjectSizeCache {
 
-   long get( Class<?> cl, Object e );
+    long get(Class<?> cl, Object e);
 
-   int size();
+    int size();
 
-   class WithHashMap implements ObjectSizeCache {
+    class WithHashMap implements ObjectSizeCache {
 
-      private final VirtualMachine      vm;
-      private final Map<Class<?>, Long> map;
+        private final VirtualMachine vm;
+        private final Map<Class<?>, Long> map;
 
-      public WithHashMap( int capacity ) {
-         vm = VM.current();
-         map = new HashMap<>(capacity);
-      }
+        public WithHashMap(int capacity) {
+            vm = VM.current();
+            map = new HashMap<>(capacity);
+        }
 
-      @Override
-      public long get( Class<?> cl, Object e ) {
-         return map.computeIfAbsent(cl, c -> vm.sizeOf(e));
-      }
+        @Override
+        public long get(Class<?> cl, Object e) {
+            return map.computeIfAbsent(cl, c -> vm.sizeOf(e));
+        }
 
-      @Override
-      public int size() {
-         return 0;
-      }
-   }
+        @Override
+        public int size() {
+            return 0;
+        }
+    }
 }

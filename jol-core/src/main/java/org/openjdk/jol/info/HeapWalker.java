@@ -35,283 +35,281 @@ import java.util.function.Function;
 
 public class HeapWalker extends AbstractGraphWalker {
 
-   private Visitor<Node>[] visitors = new Visitor[0];
+    private Visitor<Node>[] visitors = new Visitor[0];
 
-   private TriPredicate<Object, Field, Object> isChildToBeTraversed = ( parent, field, child ) -> true;
+    private TriPredicate<Object, Field, Object> isChildToBeTraversed = (parent, field, child) -> true;
 
-   private SimpleIdentityHashSet visited;
+    private SimpleIdentityHashSet visited;
 
-   private ArraySizeCache  arraySizeCache;
-   private ObjectSizeCache objectSizeCache;
+    private ArraySizeCache arraySizeCache;
+    private ObjectSizeCache objectSizeCache;
 
-   private int objectSizeCacheCapacity;
-   private int identitySetCapacity;
-   private int stackCapacity;
+    private int objectSizeCacheCapacity;
+    private int identitySetCapacity;
+    private int stackCapacity;
 
-   public final <S extends Stats> S getStats( Function<Object[], S> statsFactory, Object... roots ) {
+    public final <S extends Stats> S getStats(Function<Object[], S> statsFactory, Object... roots) {
 
-      verifyRoots(roots);
+        verifyRoots(roots);
 
-      S data = statsFactory.apply(roots);
-      SimpleStack<Object> s = initializeContainers();
+        S data = statsFactory.apply(roots);
+        SimpleStack<Object> s = initializeContainers();
 
-      for ( Object root : roots ) {
-         if ( visited.add(root) ) {
-            s.push(root);
-         }
-      }
-
-      while ( !s.isEmpty() ) {
-         Object o = s.pop();
-         Class<?> cl = o.getClass();
-
-         if ( cl.isArray() ) {
-            data.addRecord(getCachedArraySize(o));
-
-            if ( cl.getComponentType().isPrimitive() ) {
-               // Nothing to do here
-               continue;
+        for (Object root : roots) {
+            if (visited.add(root)) {
+                s.push(root);
             }
+        }
 
-            Object[] arr = (Object[])o;
+        while (!s.isEmpty()) {
+            Object o = s.pop();
+            Class<?> cl = o.getClass();
 
-            if ( arr.length > 0 ) {
-               int capacity = arr.length;
-               s.ensureCapacity(capacity);
-               visited.ensureCapacity(capacity);
+            if (cl.isArray()) {
+                data.addRecord(getCachedArraySize(o));
+
+                if (cl.getComponentType().isPrimitive()) {
+                    // Nothing to do here
+                    continue;
+                }
+
+                Object[] arr = (Object[]) o;
+
+                if (arr.length > 0) {
+                    int capacity = arr.length;
+                    s.ensureCapacity(capacity);
+                    visited.ensureCapacity(capacity);
+                }
+
+                for (Object e : arr) {
+                    if (isElementTraversed(o, null, e)) {
+                        s.push(e);
+                    }
+                }
+            } else {
+                data.addRecord(getCachedObjectSize(cl, o));
+
+                for (Field f : getAllReferenceFields(cl)) {
+                    Object e = ObjectUtils.value(o, f);
+                    if (isElementTraversed(o, f, e)) {
+                        s.push(e);
+                    }
+                }
             }
+        }
 
-            for ( Object e : arr ) {
-               if ( isElementTraversed(o, null, e) ) {
-                  s.push(e);
-               }
+        data.setContainerCapacities(getStackCapacity(s), getIdentitySetCapacity(), getSizeCacheCapacity());
+        return data;
+    }
+
+    public final <G extends Graph<N>, N extends Node> G getTree(Function<Object[], G> graphFactory,
+                                                                QuadFunction<N, String, Integer, Object, N> fieldNodeFactory, QuadFunction<N, Integer, Integer, Object, N> arrayNodeFactory, Consumer<N> nodeRecycler,
+                                                                Object... roots) {
+
+        verifyRoots(roots);
+
+        G data = graphFactory.apply(roots);
+        SimpleStack<N> s = initializeContainers();
+
+        int rootId = 1;
+        boolean single = (roots.length == 1);
+        for (Object root : roots) {
+            if (visited.add(root)) {
+                String label = single ? "<root>" : ("<r" + rootId + ">");
+                N node = fieldNodeFactory.apply(null, label, 0, root);
+                s.push(node);
             }
-         } else {
-            data.addRecord(getCachedObjectSize(cl, o));
+            rootId++;
+        }
 
-            for ( Field f : getAllReferenceFields(cl) ) {
-               Object e = ObjectUtils.value(o, f);
-               if ( isElementTraversed(o, f, e) ) {
-                  s.push(e);
-               }
+        while (!s.isEmpty()) {
+            N parent = s.pop();
+            Object p = parent.obj();
+            Class<?> cl = p.getClass();
+
+            if (cl.isArray()) {
+                parent.setSize(getCachedArraySize(p));
+
+                if (cl.getComponentType().isPrimitive()) {
+                    // Nothing to do here
+                    visit(parent);
+                    data.addNode(parent);
+                    nodeRecycler.accept(parent);
+                    continue;
+                }
+
+                Object[] arr = (Object[]) p;
+
+                int used = 0;
+                for (int i = 0, n = arr.length; i < n; ++i) {
+                    if (arr[i] != null) {
+                        ++used;
+                    }
+                }
+                parent.setLength(arr.length);
+                parent.setUsed(used);
+                visit(parent);
+                data.addNode(parent);
+
+                if (used > 0) {
+                    int capacity = used;
+                    s.ensureCapacity(capacity);
+                    visited.ensureCapacity(capacity);
+                }
+
+                for (int i = 0; i < arr.length; i++) {
+                    Object c = arr[i];
+                    if (isElementTraversed(p, null, c)) {
+                        N child = arrayNodeFactory.apply(parent, i, parent.depth() + 1, c);
+                        s.push(child);
+                    }
+                }
+            } else {
+                parent.setSize(getCachedObjectSize(cl, p));
+                visit(parent);
+                data.addNode(parent);
+
+                for (Field f : getAllReferenceFields(cl)) {
+                    Object c = ObjectUtils.value(p, f);
+                    if (isElementTraversed(p, f, c)) {
+                        N child = fieldNodeFactory.apply(parent, f.getName(), parent.depth() + 1, c);
+                        s.push(child);
+                    }
+                }
             }
-         }
-      }
+            nodeRecycler.accept(parent);
+        }
 
-      data.setContainerCapacities(getStackCapacity(s), getIdentitySetCapacity(), getSizeCacheCapacity());
-      return data;
-   }
+        data.setContainerCapacities(getStackCapacity(s), getIdentitySetCapacity(), getSizeCacheCapacity());
+        return data;
+    }
 
-   public final <G extends Graph<N>, N extends Node> G getTree( Function<Object[], G> graphFactory,
-         QuadFunction<N, String, Integer, Object, N> fieldNodeFactory, QuadFunction<N, Integer, Integer, Object, N> arrayNodeFactory, Consumer<N> nodeRecycler,
-         Object... roots ) {
+    public HeapWalker withConditionalRecursion(TriPredicate<Object, Field, Object> isChildToBeTraversed) {
+        this.isChildToBeTraversed = isChildToBeTraversed;
+        return this;
+    }
 
-      verifyRoots(roots);
+    public HeapWalker withIdentitySetCapacity(long capacity) {
+        if (0 < capacity && capacity <= Integer.MAX_VALUE) {
+            this.identitySetCapacity = (int) capacity;
+        }
+        return this;
+    }
 
-      G data = graphFactory.apply(roots);
-      SimpleStack<N> s = initializeContainers();
+    public HeapWalker withArraySizeCache(ArraySizeCache cache) {
+        this.arraySizeCache = cache;
+        return this;
+    }
 
-      int rootId = 1;
-      boolean single = (roots.length == 1);
-      for ( Object root : roots ) {
-         if ( visited.add(root) ) {
-            String label = single ? "<root>" : ("<r" + rootId + ">");
-            N node = fieldNodeFactory.apply(null, label, 0, root);
-            s.push(node);
-         }
-         rootId++;
-      }
+    public HeapWalker withObjectSizeCache(ObjectSizeCache cache) {
+        this.objectSizeCache = cache;
+        return this;
+    }
 
-      while ( !s.isEmpty() ) {
-         N parent = s.pop();
-         Object p = parent.obj();
-         Class<?> cl = p.getClass();
+    public HeapWalker withObjectSizeCacheCapacity(int capacity) {
+        this.objectSizeCacheCapacity = capacity;
+        return this;
+    }
 
-         if ( cl.isArray() ) {
-            parent.setSize(getCachedArraySize(p));
+    public HeapWalker withStackCapacity(int capacity) {
+        this.stackCapacity = capacity;
+        return this;
+    }
 
-            if ( cl.getComponentType().isPrimitive() ) {
-               // Nothing to do here
-               visit(parent);
-               data.addNode(parent);
-               nodeRecycler.accept(parent);
-               continue;
-            }
+    @SafeVarargs
+    public final HeapWalker withVisitors(Visitor<Node>... visitors) {
+        this.visitors = visitors;
+        return this;
+    }
 
-            Object[] arr = (Object[])p;
+    private long getCachedArraySize(Object arr) {
+        return arraySizeCache.get(arr);
+    }
 
-            int used = 0;
-            for ( int i = 0, n = arr.length; i < n; ++i ) {
-               if ( arr[i] != null ) {
-                  ++used;
-               }
-            }
-            parent.setLength(arr.length);
-            parent.setUsed(used);
-            visit(parent);
-            data.addNode(parent);
+    private long getCachedObjectSize(Class<?> cl, Object e) {
+        return objectSizeCache.get(cl, e);
+    }
 
-            if ( used > 0 ) {
-               int capacity = used;
-               s.ensureCapacity(capacity);
-               visited.ensureCapacity(capacity);
-            }
+    private int getIdentitySetCapacity() {
+        return visited.length();
+    }
 
-            for ( int i = 0; i < arr.length; i++ ) {
-               Object c = arr[i];
-               if ( isElementTraversed(p, null, c) ) {
-                  N child = arrayNodeFactory.apply(parent, i, parent.depth() + 1, c);
-                  s.push(child);
-               }
-            }
-         } else {
-            parent.setSize(getCachedObjectSize(cl, p));
-            visit(parent);
-            data.addNode(parent);
+    private int getSizeCacheCapacity() {
+        return objectSizeCache.size();
+    }
 
-            for ( Field f : getAllReferenceFields(cl) ) {
-               Object c = ObjectUtils.value(p, f);
-               if ( isElementTraversed(p, f, c) ) {
-                  N child = fieldNodeFactory.apply(parent, f.getName(), parent.depth() + 1, c);
-                  s.push(child);
-               }
-            }
-         }
-         nodeRecycler.accept(parent);
-      }
+    private <E> int getStackCapacity(SimpleStack<E> s) {
+        return s.length();
+    }
 
-      data.setContainerCapacities(getStackCapacity(s), getIdentitySetCapacity(), getSizeCacheCapacity());
-      return data;
-   }
+    private <E> SimpleStack<E> initializeContainers() {
+        if (visited == null) {
+            visited = identitySetCapacity > 0 ? new SimpleIdentityHashSet(identitySetCapacity) : new SimpleIdentityHashSet();
+        }
+        if (arraySizeCache == null) {
+            arraySizeCache = new ArraySizeCache.Passthrough();
+        }
+        if (objectSizeCache == null) {
+            objectSizeCache = new ObjectSizeCache.WithHashMap(objectSizeCacheCapacity);
+        }
 
-   public HeapWalker withConditionalRecursion( TriPredicate<Object, Field, Object> isChildToBeTraversed ) {
-      this.isChildToBeTraversed = isChildToBeTraversed;
-      return this;
-   }
+        return stackCapacity > 0 ? new SimpleStack<>(stackCapacity) : new SimpleStack<>();
+    }
 
-   public HeapWalker withIdentitySetCapacity( long capacity ) {
-      if ( 0 < capacity && capacity <= Integer.MAX_VALUE ) {
-         this.identitySetCapacity = (int)capacity;
-      }
-      return this;
-   }
+    private boolean isElementTraversed(Object o, Field f, Object e) {
+        return e != null && isChildToBeTraversed.test(o, f, e) && visited.add(e);
+    }
 
-   public HeapWalker withArraySizeCache( ArraySizeCache cache ) {
-      this.arraySizeCache = cache;
-      return this;
-   }
+    private void visit(Node node) {
+        for (Visitor<Node> v : visitors) {
+            v.visit(node);
+        }
+    }
 
-   public HeapWalker withObjectSizeCache( ObjectSizeCache cache ) {
-      this.objectSizeCache = cache;
-      return this;
-   }
+    public interface Graph<N> extends Stats {
 
-   public HeapWalker withObjectSizeCacheCapacity( int capacity ) {
-      this.objectSizeCacheCapacity = capacity;
-      return this;
-   }
-
-   public HeapWalker withStackCapacity( int capacity ) {
-      this.stackCapacity = capacity;
-      return this;
-   }
-
-   @SafeVarargs
-   public final HeapWalker withVisitors( Visitor<Node>... visitors ) {
-      this.visitors = visitors;
-      return this;
-   }
-
-   private long getCachedArraySize( Object arr ) {
-      return arraySizeCache.get(arr);
-   }
-
-   private long getCachedObjectSize( Class<?> cl, Object e ) {
-      return objectSizeCache.get(cl, e);
-   }
-
-   private int getIdentitySetCapacity() {
-      return visited.length();
-   }
-
-   private int getSizeCacheCapacity() {
-      return objectSizeCache.size();
-   }
-
-   private <E> int getStackCapacity( SimpleStack<E> s ) {
-      return s.length();
-   }
-
-   private <E> SimpleStack<E> initializeContainers() {
-      if ( visited == null ) {
-         visited = identitySetCapacity > 0 ? new SimpleIdentityHashSet(identitySetCapacity) : new SimpleIdentityHashSet();
-      }
-      if ( arraySizeCache == null ) {
-         arraySizeCache = new ArraySizeCache.Passthrough();
-      }
-      if ( objectSizeCache == null ) {
-         objectSizeCache = new ObjectSizeCache.WithHashMap(objectSizeCacheCapacity);
-      }
-
-      return stackCapacity > 0 ? new SimpleStack<>(stackCapacity) : new SimpleStack<>();
-   }
-
-   private boolean isElementTraversed( Object o, Field f, Object e ) {
-      return e != null && isChildToBeTraversed.test(o, f, e) && visited.add(e);
-   }
-
-   private void visit( Node node ) {
-      for ( Visitor<Node> v : visitors ) {
-         v.visit(node);
-      }
-   }
-
-   public interface Graph<N> extends Stats {
-
-      void addNode( N node );
-   }
+        void addNode(N node);
+    }
 
 
-   public interface Node {
+    public interface Node {
 
-      int depth();
+        int depth();
 
-      long getSize();
+        void setSize(long size);
 
-      Object obj();
+        Object obj();
 
-      void setLength( long length );
+        void setLength(long length);
 
-      void setSize( long size );
-
-      void setUsed( long used );
-   }
+        void setUsed(long used);
+    }
 
 
-   @FunctionalInterface
-   public interface QuadFunction<T, U, V, W, R> {
+    @FunctionalInterface
+    public interface QuadFunction<T, U, V, W, R> {
 
-      R apply( T t, U u, V v, W w );
-   }
-
-
-   public interface Stats {
-
-      void addRecord( long size );
-
-      void setContainerCapacities( int stackCapacity, int identitySetCapacity, int sizeCacheCapacity );
-   }
+        R apply(T t, U u, V v, W w);
+    }
 
 
-   @FunctionalInterface
-   public interface TriPredicate<T, U, V> {
+    public interface Stats {
 
-      boolean test( T t, U u, V v );
-   }
+        void addRecord(long size);
+
+        void setContainerCapacities(int stackCapacity, int identitySetCapacity, int sizeCacheCapacity);
+    }
 
 
-   public interface Visitor<N> {
+    @FunctionalInterface
+    public interface TriPredicate<T, U, V> {
 
-      void visit( N node );
-   }
+        boolean test(T t, U u, V v);
+    }
+
+
+    public interface Visitor<N> {
+
+        void visit(N node);
+    }
 }
