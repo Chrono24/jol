@@ -26,6 +26,8 @@ package org.openjdk.jol.info;
 
 import org.openjdk.jol.util.SimpleIdentityHashSet;
 
+import java.util.IdentityHashMap;
+
 public interface VisitedIdentities {
 
     void ensureCapacity(int capacity);
@@ -55,6 +57,30 @@ public interface VisitedIdentities {
         @Override
         public void ensureCapacity(int capacity) {
             set.ensureCapacity(capacity);
+        }
+    }
+
+    class WithJavaUtilIdentityHashMap implements org.openjdk.jol.info.VisitedIdentities {
+
+        private final IdentityHashMap<Object, Object> set;
+
+        public WithJavaUtilIdentityHashMap(int initialCapacity) {
+            set = new IdentityHashMap<>(initialCapacity);
+        }
+
+        @Override
+        public boolean add(Object o) {
+            return set.put(o, o) == null;
+        }
+
+        @Override
+        public void ensureCapacity(int capacity) {
+            // nothing we can do here
+        }
+
+        @Override
+        public int size() {
+            return set.size();
         }
     }
 }
