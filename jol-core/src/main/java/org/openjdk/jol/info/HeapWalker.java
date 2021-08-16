@@ -25,7 +25,6 @@
 package org.openjdk.jol.info;
 
 import org.openjdk.jol.util.ObjectUtils;
-import org.openjdk.jol.util.SimpleIdentityHashSet;
 import org.openjdk.jol.util.SimpleStack;
 
 import java.lang.reflect.Field;
@@ -39,7 +38,7 @@ public class HeapWalker extends AbstractGraphWalker {
 
     private TriPredicate<Object, Field, Object> isChildToBeTraversed = (parent, field, child) -> true;
 
-    private SimpleIdentityHashSet visited;
+    private VisitedIdentities visited;
 
     private ArraySizeCache arraySizeCache;
     private ObjectSizeCache objectSizeCache;
@@ -189,6 +188,11 @@ public class HeapWalker extends AbstractGraphWalker {
         return this;
     }
 
+    public HeapWalker withIdentitySet(VisitedIdentities visited) {
+        this.visited = visited;
+        return this;
+    }
+
     public HeapWalker withIdentitySetCapacity(long capacity) {
         if (0 < capacity && capacity <= Integer.MAX_VALUE) {
             this.identitySetCapacity = (int) capacity;
@@ -231,7 +235,7 @@ public class HeapWalker extends AbstractGraphWalker {
     }
 
     private int getIdentitySetCapacity() {
-        return visited.length();
+        return visited.size();
     }
 
     private int getSizeCacheCapacity() {
@@ -244,7 +248,7 @@ public class HeapWalker extends AbstractGraphWalker {
 
     private <E> SimpleStack<E> initializeContainers() {
         if (visited == null) {
-            visited = identitySetCapacity > 0 ? new SimpleIdentityHashSet(identitySetCapacity) : new SimpleIdentityHashSet();
+            visited = new VisitedIdentities.WithSimpleIdentityHashSet(identitySetCapacity);
         }
         if (arraySizeCache == null) {
             arraySizeCache = new ArraySizeCache.Passthrough();
