@@ -131,6 +131,7 @@ public class HeapWalker extends AbstractGraphWalker {
 
                 if (cl.getComponentType().isPrimitive()) {
                     // Nothing to do here
+                    addPrimitiveArrayInfo(parent, p, cl);
                     visit(parent);
                     data.addNode(parent);
                     nodeRecycler.accept(parent);
@@ -224,6 +225,74 @@ public class HeapWalker extends AbstractGraphWalker {
     public final HeapWalker withVisitors(Visitor<Node>... visitors) {
         this.visitors = visitors;
         return this;
+    }
+
+    private <N extends Node> void addPrimitiveArrayInfo(N node, Object o, Class<?> cl) {
+        long length = 0, used = 0;
+
+        if (cl == byte[].class) {
+            byte[] arr = (byte[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0) {
+                    ++used;
+                }
+            }
+        } else if (cl == boolean[].class) {
+            return; // kind of nonsensical
+        } else if (cl == short[].class) {
+            short[] arr = (short[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0) {
+                    ++used;
+                }
+            }
+        } else if (cl == char[].class) {
+            char[] arr = (char[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0) {
+                    ++used;
+                }
+            }
+        } else if (cl == int[].class) {
+            int[] arr = (int[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0) {
+                    ++used;
+                }
+            }
+        } else if (cl == float[].class) {
+            float[] arr = (float[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0.0f) {
+                    ++used;
+                }
+            }
+        } else if (cl == double[].class) {
+            double[] arr = (double[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0.0) {
+                    ++used;
+                }
+            }
+        } else if (cl == long[].class) {
+            long[] arr = (long[]) o;
+            length = arr.length;
+            for (int i = 0; i < length; ++i) {
+                if (arr[i] != 0L) {
+                    ++used;
+                }
+            }
+        }
+        if (length > 0) {
+            node.setLength(length);
+            node.setUsed(used);
+        }
     }
 
     private long getCachedArraySize(Object arr) {
