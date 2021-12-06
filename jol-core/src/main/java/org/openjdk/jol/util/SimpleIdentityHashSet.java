@@ -85,7 +85,7 @@ public final class SimpleIdentityHashSet {
     }
 
     private boolean resize(int newCapacity) {
-        int newLength = newCapacity * scaleFactor;
+        int newLength = newCapacity << 1;
 
         Object[] oldTable = table;
         int oldLength = oldTable.length;
