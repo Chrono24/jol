@@ -52,7 +52,7 @@ public final class SimpleIdentityHashSet {
     private static int capacity(int expectedMaxSize, int scaleFactor) {
         return (expectedMaxSize > MAXIMUM_CAPACITY / scaleFactor) ? MAXIMUM_CAPACITY :
               (expectedMaxSize <= MINIMUM_CAPACITY) ? MINIMUM_CAPACITY :
-                    Integer.highestOneBit(expectedMaxSize * scaleFactor);
+                    Integer.highestOneBit(expectedMaxSize * scaleFactor) << 1;
     }
 
     private static int hash(Object x, int length) {
@@ -85,7 +85,7 @@ public final class SimpleIdentityHashSet {
     }
 
     private boolean resize(int newCapacity) {
-        int newLength = newCapacity * scaleFactor;
+        int newLength = newCapacity << 1;
 
         Object[] oldTable = table;
         int oldLength = oldTable.length;
@@ -124,7 +124,7 @@ public final class SimpleIdentityHashSet {
     public void ensureCapacity(int capacity) {
         int target = capacity + size();
         if ( target*scaleFactor > length()) {
-            resize(capacity(target, scaleFactor));
+            resize(Integer.highestOneBit(target * scaleFactor));
         }
     }
 }
