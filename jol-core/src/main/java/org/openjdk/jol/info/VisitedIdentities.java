@@ -42,6 +42,10 @@ public interface VisitedIdentities {
             set = new SimpleIdentityHashSet(initialCapacity);
         }
 
+        public WithSimpleIdentityHashSet(int initialCapacity, int scaleFactor) {
+            set = new SimpleIdentityHashSet(initialCapacity, scaleFactor);
+        }
+
         @Override
         public boolean add(Object o) {
             return set.add(o);
