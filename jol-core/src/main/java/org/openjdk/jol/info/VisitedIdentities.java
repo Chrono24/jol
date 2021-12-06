@@ -53,7 +53,7 @@ public interface VisitedIdentities {
 
         @Override
         public int size() {
-            return set.length();
+            return set.size();
         }
 
         @Override
