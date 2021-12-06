@@ -28,9 +28,11 @@ package org.openjdk.jol.util;
  * Identity hash set implementation optimized for JOL uses. Cuts corners where it can.
  */
 public final class SimpleIdentityHashSet {
+    private static final int DEFAULT_SCALE_FACTOR = 3;
     private static final int MINIMUM_CAPACITY = 4;
     private static final int MAXIMUM_CAPACITY = 1 << 29;
 
+    private final int scaleFactor;
     private Object[] table;
     private int size;
 
@@ -39,13 +41,18 @@ public final class SimpleIdentityHashSet {
     }
 
     public SimpleIdentityHashSet(int expectedMaxSize) {
-        table = new Object[capacity(Math.max(MINIMUM_CAPACITY, expectedMaxSize))];
+        this(expectedMaxSize, DEFAULT_SCALE_FACTOR);
     }
 
-    private static int capacity(int expectedMaxSize) {
-        return (expectedMaxSize > MAXIMUM_CAPACITY / 3) ? MAXIMUM_CAPACITY :
-               (expectedMaxSize <= 2 * MINIMUM_CAPACITY / 3) ? MINIMUM_CAPACITY :
-               Integer.highestOneBit(expectedMaxSize + (expectedMaxSize << 1));
+    public SimpleIdentityHashSet(int expectedMaxSize, int scaleFactor) {
+        this.scaleFactor = Math.min(4, Math.max(1, scaleFactor));
+        table = new Object[capacity(expectedMaxSize, this.scaleFactor)];
+    }
+
+    private static int capacity(int expectedMaxSize, int scaleFactor) {
+        return (expectedMaxSize > MAXIMUM_CAPACITY / scaleFactor) ? MAXIMUM_CAPACITY :
+              (expectedMaxSize <= MINIMUM_CAPACITY) ? MINIMUM_CAPACITY :
+                    Integer.highestOneBit(expectedMaxSize * scaleFactor);
     }
 
     private static int hash(Object x, int length) {
@@ -69,7 +76,7 @@ public final class SimpleIdentityHashSet {
             }
 
             final int s = size + 1;
-            if (s*3 > len && resize(len)) continue;
+            if (s*scaleFactor > len && resize(len)) continue;
 
             tab[i] = o;
             size = s;
@@ -78,7 +85,7 @@ public final class SimpleIdentityHashSet {
     }
 
     private boolean resize(int newCapacity) {
-        int newLength = newCapacity * 2;
+        int newLength = newCapacity * scaleFactor;
 
         Object[] oldTable = table;
         int oldLength = oldTable.length;
@@ -116,8 +123,8 @@ public final class SimpleIdentityHashSet {
 
     public void ensureCapacity(int capacity) {
         int target = capacity + size();
-        if ( target*3 > length()) {
-            resize(capacity(target));
+        if ( target*scaleFactor > length()) {
+            resize(capacity(target, scaleFactor));
         }
     }
 }
