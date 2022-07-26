@@ -32,6 +32,8 @@ import java.util.Arrays;
 
 public class ObjectUtils {
 
+    private static final int JVM_VERSION = Integer.parseInt(System.getProperty("java.vm.specification.version"));
+
     /**
      * Produces the toString string, only calling toString() on known types,
      * which do not mutate the instance.
@@ -80,19 +82,23 @@ public class ObjectUtils {
      * @return value, maybe a boxed primitive
      */
     public static Object value(Object o, Field f) {
-        // Try 1. Get with Reflection:
-        try {
-            return f.get(o);
-        } catch (Exception e) {
-            // fall-through
-        }
+        if (JVM_VERSION <= 11) {
+            // Try 1. Get with Reflection:
+            try {
+                return f.get(o);
+            }
+            catch ( Exception e ) {
+                // fall-through
+            }
 
-        // Try 2. Get with Reflection and setAccessible:
-        try {
-            f.setAccessible(true);
-            return f.get(o);
-        } catch (Exception e) {
-            // fall-through
+            // Try 2. Get with Reflection and setAccessible:
+            try {
+                f.setAccessible(true);
+                return f.get(o);
+            }
+            catch ( Exception e ) {
+                // fall-through
+            }
         }
 
         // Try 3. Get with VM hack
