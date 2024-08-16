@@ -29,6 +29,7 @@ import org.openjdk.jol.vm.VirtualMachine;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public interface ObjectSizeCache {
@@ -54,7 +55,7 @@ public interface ObjectSizeCache {
 
         @Override
         public int size() {
-            return 0;
+            return map.size();
         }
     }
 }
