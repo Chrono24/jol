@@ -34,6 +34,8 @@ public interface VisitedIdentities {
 
     int size();
 
+    VisitedIdentities clear();
+
     class WithSimpleIdentityHashSet implements VisitedIdentities {
 
         private final SimpleIdentityHashSet set;
@@ -54,6 +56,12 @@ public interface VisitedIdentities {
         @Override
         public int size() {
             return set.size();
+        }
+
+        @Override
+        public VisitedIdentities clear() {
+            set.clear();
+            return this;
         }
 
         @Override

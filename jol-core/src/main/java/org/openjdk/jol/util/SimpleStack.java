@@ -81,6 +81,15 @@ public class SimpleStack<E> {
         return head + 1;
     }
 
+
+    public SimpleStack<E> clear() {
+        if (head > -1) {
+            Arrays.fill(elements, 0, head, null);
+            head = -1;
+        }
+        return this;
+    }
+
     public void ensureCapacity(int capacity) {
         int target = capacity + size();
         if (target > length()) {

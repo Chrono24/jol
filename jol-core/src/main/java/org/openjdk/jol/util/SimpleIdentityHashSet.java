@@ -24,6 +24,9 @@
  */
 package org.openjdk.jol.util;
 
+import java.util.Arrays;
+
+
 /**
  * Identity hash set implementation optimized for JOL uses. Cuts corners where it can.
  */
@@ -82,6 +85,14 @@ public final class SimpleIdentityHashSet {
             size = s;
             return true;
         }
+    }
+
+    public SimpleIdentityHashSet clear() {
+        if (size > 0) {
+            Arrays.fill(table, null);
+            size = 0;
+        }
+        return this;
     }
 
     private boolean resize(int newCapacity) {
