@@ -58,4 +58,25 @@ public interface ObjectSizeCache {
             return map.size();
         }
     }
+
+    class WithConcurrentHashMap implements ObjectSizeCache {
+
+        private final VirtualMachine vm;
+        private final Map<Class<?>, Long> map;
+
+        public WithConcurrentHashMap(int capacity) {
+            vm = VM.current();
+            map = new ConcurrentHashMap<>(capacity);
+        }
+
+        @Override
+        public long get(Class<?> cl, Object e) {
+            return map.computeIfAbsent(cl, c -> vm.sizeOf(e));
+        }
+
+        @Override
+        public int size() {
+            return map.size();
+        }
+    }
 }
