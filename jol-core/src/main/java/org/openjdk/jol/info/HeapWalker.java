@@ -42,6 +42,7 @@ public class HeapWalker extends AbstractGraphWalker {
 
     private ArraySizeCache arraySizeCache;
     private ObjectSizeCache objectSizeCache;
+    private SimpleStack<?> stack;
 
     private int objectSizeCacheCapacity;
     private int identitySetCapacity;
@@ -52,7 +53,8 @@ public class HeapWalker extends AbstractGraphWalker {
         verifyRoots(roots);
 
         S data = statsFactory.apply(roots);
-        SimpleStack<Object> s = initializeContainers();
+        //noinspection unchecked
+        SimpleStack<Object> s = (SimpleStack<Object>)initializeContainers();
 
         for (Object root : roots) {
             if (visited.add(root)) {
@@ -97,7 +99,7 @@ public class HeapWalker extends AbstractGraphWalker {
             }
         }
 
-        data.setContainerCapacities(getStackCapacity(s), getIdentitySetCapacity(), getSizeCacheCapacity());
+        data.setContainerCapacities(getStackCapacity(), getIdentitySetCapacity(), getSizeCacheCapacity());
         return data;
     }
 
@@ -108,7 +110,8 @@ public class HeapWalker extends AbstractGraphWalker {
         verifyRoots(roots);
 
         G data = graphFactory.apply(roots);
-        SimpleStack<N> s = initializeContainers();
+        //noinspection unchecked
+        SimpleStack<N> s = (SimpleStack<N>)initializeContainers();
 
         int rootId = 1;
         boolean single = (roots.length == 1);
@@ -180,7 +183,7 @@ public class HeapWalker extends AbstractGraphWalker {
             nodeRecycler.accept(parent);
         }
 
-        data.setContainerCapacities(getStackCapacity(s), getIdentitySetCapacity(), getSizeCacheCapacity());
+        data.setContainerCapacities(getStackCapacity(), getIdentitySetCapacity(), getSizeCacheCapacity());
         return data;
     }
 
@@ -213,6 +216,11 @@ public class HeapWalker extends AbstractGraphWalker {
 
     public HeapWalker withObjectSizeCacheCapacity(int capacity) {
         this.objectSizeCacheCapacity = capacity;
+        return this;
+    }
+
+    public HeapWalker withStack(SimpleStack<Object> stack) {
+        this.stack = stack;
         return this;
     }
 
@@ -311,11 +319,11 @@ public class HeapWalker extends AbstractGraphWalker {
         return objectSizeCache.size();
     }
 
-    private <E> int getStackCapacity(SimpleStack<E> s) {
-        return s.length();
+    private int getStackCapacity() {
+        return stack.length();
     }
 
-    private <E> SimpleStack<E> initializeContainers() {
+    private SimpleStack<?> initializeContainers() {
         if (visited == null) {
             visited = new VisitedIdentities.WithSimpleIdentityHashSet(identitySetCapacity);
         }
@@ -326,7 +334,13 @@ public class HeapWalker extends AbstractGraphWalker {
             objectSizeCache = new ObjectSizeCache.WithHashMap(objectSizeCacheCapacity);
         }
 
-        return stackCapacity > 0 ? new SimpleStack<>(stackCapacity) : new SimpleStack<>();
+        if (stack == null ) {
+            stack = stackCapacity > 0 ? new SimpleStack<>(stackCapacity) : new SimpleStack<>();
+        } else {
+            stack.clear();
+        }
+
+        return stack;
     }
 
     private boolean isElementTraversed(Object o, Field f, Object e) {
