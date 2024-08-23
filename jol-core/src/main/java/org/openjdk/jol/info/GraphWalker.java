@@ -41,10 +41,12 @@ public class GraphWalker extends AbstractGraphWalker {
 
     private final GraphVisitor[] visitors;
     private final HashMap<Class<?>, Long> sizeCache;
+    private final HashMap<Field, Long> offsetCache;
 
     public GraphWalker(GraphVisitor... visitor) {
         this.visitors = visitor;
         sizeCache = new HashMap<>();
+        offsetCache = new HashMap<>();
     }
 
     public GraphLayout walk(Object... roots) {
@@ -100,7 +102,12 @@ public class GraphWalker extends AbstractGraphWalker {
                 cGpr.setSize(knownSize);
 
                 for (Field f : getAllReferenceFields(cl)) {
-                    Object e = ObjectUtils.value(o, f);
+                    Long knownOffset = offsetCache.get(f);
+                    if (knownOffset == null) {
+                        knownOffset = VM.current().fieldOffset(f);
+                        offsetCache.put(f, knownOffset);
+                    }
+                    Object e = VM.current().getObject(o, knownOffset);
                     if (e != null && visited.add(e)) {
                         GraphPathRecord gpr = new FieldGraphPathRecord(cGpr, f.getName(), cGpr.depth() + 1, e);
                         data.addRecord(gpr);

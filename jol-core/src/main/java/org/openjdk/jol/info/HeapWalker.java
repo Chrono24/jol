@@ -24,7 +24,6 @@
  */
 package org.openjdk.jol.info;
 
-import org.openjdk.jol.util.ObjectUtils;
 import org.openjdk.jol.util.SimpleStack;
 
 import java.lang.reflect.Field;
@@ -42,6 +41,7 @@ public class HeapWalker extends AbstractGraphWalker {
 
     private ArraySizeCache arraySizeCache;
     private ObjectSizeCache objectSizeCache;
+    private ReferenceFieldCache referenceFieldCache;
     private SimpleStack<?> stack;
 
     private int objectSizeCacheCapacity;
@@ -91,7 +91,7 @@ public class HeapWalker extends AbstractGraphWalker {
                 data.addRecord(getCachedObjectSize(cl, o));
 
                 for (Field f : getAllReferenceFields(cl)) {
-                    Object e = ObjectUtils.value(o, f);
+                    Object e = getCachedReferenceField(f, o);
                     if (isElementTraversed(o, f, e)) {
                         s.push(e);
                     }
@@ -173,7 +173,7 @@ public class HeapWalker extends AbstractGraphWalker {
                 data.addNode(parent);
 
                 for (Field f : getAllReferenceFields(cl)) {
-                    Object c = ObjectUtils.value(p, f);
+                    Object c = getCachedReferenceField(f, p);
                     if (isElementTraversed(p, f, c)) {
                         N child = fieldNodeFactory.apply(parent, f.getName(), parent.depth() + 1, c);
                         s.push(child);
@@ -216,6 +216,11 @@ public class HeapWalker extends AbstractGraphWalker {
 
     public HeapWalker withObjectSizeCacheCapacity(int capacity) {
         this.objectSizeCacheCapacity = capacity;
+        return this;
+    }
+
+    public HeapWalker withReferenceFieldCache(ReferenceFieldCache cache) {
+        this.referenceFieldCache = cache;
         return this;
     }
 
@@ -311,6 +316,10 @@ public class HeapWalker extends AbstractGraphWalker {
         return objectSizeCache.get(cl, e);
     }
 
+    private Object getCachedReferenceField( Field f, Object e) {
+        return referenceFieldCache.get(f, e);
+    }
+
     private int getIdentitySetCapacity() {
         return visited.size();
     }
@@ -333,6 +342,9 @@ public class HeapWalker extends AbstractGraphWalker {
         if (objectSizeCache == null) {
             objectSizeCache = new ObjectSizeCache.WithHashMap(objectSizeCacheCapacity);
         }
+        if (referenceFieldCache == null) {
+            referenceFieldCache = new ReferenceFieldCache.WithHashMap(objectSizeCacheCapacity);
+        }
 
         if (stack == null ) {
             stack = stackCapacity > 0 ? new SimpleStack<>(stackCapacity) : new SimpleStack<>();
@@ -343,8 +355,8 @@ public class HeapWalker extends AbstractGraphWalker {
         return stack;
     }
 
-    private boolean isElementTraversed(Object o, Field f, Object e) {
-        return e != null && isChildToBeTraversed.test(o, f, e) && visited.add(e);
+    private boolean isElementTraversed(Object parent, Field field, Object child) {
+        return child != null && isChildToBeTraversed.test(parent, field, child) && visited.add(child);
     }
 
     private void visit(Node node) {
