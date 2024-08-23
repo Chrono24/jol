@@ -46,8 +46,9 @@ public interface ArraySizeCache {
     class Precalculated implements ArraySizeCache {
 
         private static final int ARRAY_HEADER_SIZE;
-        private static final int MASK;
         private static final int OBJECT_ALIGNMENT;
+
+        private static final long ALIGNMENT_MASK;
 
         private static final int BYTE_SIZE;
         private static final int BOOLEAN_SIZE;
@@ -61,11 +62,12 @@ public interface ArraySizeCache {
 
         static {
             VirtualMachine vm = VM.current();
-            int shift = 31 - Integer.numberOfLeadingZeros(vm.objectAlignment());
 
             ARRAY_HEADER_SIZE = vm.arrayHeaderSize();
-            MASK = (0xffffffff >> shift) << shift;
             OBJECT_ALIGNMENT = vm.objectAlignment();
+
+            int alignmentShift = 31 - Integer.numberOfLeadingZeros(OBJECT_ALIGNMENT);
+            ALIGNMENT_MASK = 0xffffffffffffffffL << alignmentShift;
 
             BYTE_SIZE = vm.arrayIndexScale("byte");
             BOOLEAN_SIZE = vm.arrayIndexScale("boolean");
@@ -78,10 +80,10 @@ public interface ArraySizeCache {
             OBJECT_SIZE = vm.arrayIndexScale("Object[]");
         }
 
-        private static int arraySize(int elementSize, int numElements) {
-            int usedSize = ARRAY_HEADER_SIZE + elementSize * numElements;
-            int floor = usedSize & MASK;
-            int ceil = floor + OBJECT_ALIGNMENT;
+        private static long arraySize(int elementSize, long numElements) {
+            long usedSize = ARRAY_HEADER_SIZE + elementSize * numElements;
+            long floor = usedSize & ALIGNMENT_MASK;
+            long ceil = floor + OBJECT_ALIGNMENT;
             return usedSize > floor ? ceil : floor;
         }
 
