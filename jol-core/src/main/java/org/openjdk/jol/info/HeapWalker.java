@@ -104,7 +104,7 @@ public class HeapWalker extends AbstractGraphWalker {
     }
 
     public final <G extends Graph<N>, N extends Node> G getTree(Function<Object[], G> graphFactory,
-                                                                QuadFunction<N, String, Integer, Object, N> fieldNodeFactory, QuadFunction<N, Integer, Integer, Object, N> arrayNodeFactory, Consumer<N> nodeRecycler,
+                                                                FieldNodeFactory<N> fieldNodeFactory, ArrayNodeFactory<N> arrayNodeFactory, Consumer<N> nodeRecycler,
                                                                 Object... roots) {
 
         verifyRoots(roots);
@@ -353,6 +353,7 @@ public class HeapWalker extends AbstractGraphWalker {
         }
     }
 
+
     public interface Graph<N> extends Stats {
 
         void addNode(N node);
@@ -374,9 +375,16 @@ public class HeapWalker extends AbstractGraphWalker {
 
 
     @FunctionalInterface
-    public interface QuadFunction<T, U, V, W, R> {
+    public interface FieldNodeFactory<Node> {
 
-        R apply(T t, U u, V v, W w);
+        Node apply(Node parentNode, String fieldName, int depth, Object childObject);
+    }
+
+
+    @FunctionalInterface
+    public interface ArrayNodeFactory<Node> {
+
+        Node apply(Node parentNode, int index, int depth, Object childObject);
     }
 
 
