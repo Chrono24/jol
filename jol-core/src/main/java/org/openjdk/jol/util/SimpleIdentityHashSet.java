@@ -63,7 +63,8 @@ public final class SimpleIdentityHashSet {
     }
 
     private static int nextIndex(int i, int len) {
-        return (i + 1 < len ? i + 1 : 0);
+        int next = i + 1;
+        return (next < len ? next : 0);
     }
 
     public boolean add(Object o) {
