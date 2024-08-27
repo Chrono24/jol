@@ -134,9 +134,10 @@ public final class SimpleIdentityHashSet {
     }
 
     public void ensureCapacity(int capacity) {
-        int target = capacity + size();
-        if ( target*scaleFactor > length()) {
-            resize(Integer.highestOneBit(target * scaleFactor));
+        int s = capacity + size();
+        int len = s * scaleFactor;
+        if ( len > length()) {
+            resize(Integer.highestOneBit(len));
         }
     }
 }

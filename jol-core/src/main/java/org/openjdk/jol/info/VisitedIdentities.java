@@ -69,4 +69,65 @@ public interface VisitedIdentities {
             set.ensureCapacity(capacity);
         }
     }
+
+    class WithSegmentedSimpleIdentityHashSet implements VisitedIdentities {
+
+        private static int hash(Object x, int rightShift ) {
+            return System.identityHashCode(x) >>> rightShift;
+        }
+
+        private final SimpleIdentityHashSet[] segments;
+        private final int rightShift;
+
+        public WithSegmentedSimpleIdentityHashSet(int segmentCount, int initialCapacity) {
+            segments = new SimpleIdentityHashSet[Integer.highestOneBit(segmentCount)];
+            rightShift = Integer.numberOfLeadingZeros(segments.length) + 1;
+
+            int perSegmentInitialCapacity = initialCapacity / segments.length + 1;
+            for ( int i = 0; i < segments.length; i++ ) {
+                segments[i] = new SimpleIdentityHashSet(perSegmentInitialCapacity);
+            }
+        }
+
+        public WithSegmentedSimpleIdentityHashSet(int segmentCount, int initialCapacity, int scaleFactor) {
+            segments = new SimpleIdentityHashSet[Integer.highestOneBit(segmentCount)];
+            rightShift = Integer.numberOfLeadingZeros(segments.length) + 1;
+
+            int perSegmentInitialCapacity = initialCapacity / segments.length + 1;
+            for ( int i = 0; i < segments.length; i++ ) {
+                segments[i] = new SimpleIdentityHashSet(perSegmentInitialCapacity, scaleFactor);
+            }
+        }
+
+        @Override
+        public boolean add(Object o) {
+            int index = hash(o, rightShift);
+            return segments[index].add(o);
+        }
+
+        @Override
+        public int size() {
+            int size = 0;
+            for ( SimpleIdentityHashSet segment : segments ) {
+                size += segment.size();
+            }
+            return size;
+        }
+
+        @Override
+        public VisitedIdentities clear() {
+            for ( SimpleIdentityHashSet segment : segments ) {
+                segment.clear();
+            }
+            return this;
+        }
+
+        @Override
+        public void ensureCapacity(int capacity) {
+            int perSegmentCapacity = capacity / segments.length + 1;
+            for ( SimpleIdentityHashSet segment : segments ) {
+                segment.ensureCapacity(perSegmentCapacity);
+            }
+        }
+    }
 }
