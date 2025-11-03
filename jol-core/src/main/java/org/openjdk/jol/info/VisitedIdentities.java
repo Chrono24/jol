@@ -73,7 +73,8 @@ public interface VisitedIdentities {
     class WithSegmentedSimpleIdentityHashSet implements VisitedIdentities {
 
         private static int hash(Object x, int rightShift ) {
-            return System.identityHashCode(x) >>> rightShift;
+            // identityHashCode appears to yield only positive numbers, i.e., the MSB is never set, assigning only half our sets
+            return (System.identityHashCode(x) & 0x7fff_ffff) >>> (rightShift - 1); // hence we mask as failsafe, and shift one less
         }
 
         private final SimpleIdentityHashSet[] segments;
