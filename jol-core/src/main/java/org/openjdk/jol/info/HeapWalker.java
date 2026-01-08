@@ -302,10 +302,9 @@ public class HeapWalker extends AbstractGraphWalker {
                 }
             }
         }
-        if (length > 0) {
-            node.setLength(length);
-            node.setUsed(used);
-        }
+
+        node.setLength(length);
+        node.setUsed(used);
     }
 
     private long getCachedArraySize(Object arr) {
